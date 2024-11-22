@@ -34,7 +34,7 @@ export const EditInput = ({
   };
 
   return (
-    <div className="text-lg shrink-0">
+    <div>
       <input
         autoFocus
         value={value}
