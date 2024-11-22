@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import { useCallback } from "react";
 import { WorkflowNode } from "./WorkflowNode";
+import { doesCreateCycle } from "./helpers/doesCreateCycle";
 
 let nodeId = 1;
 function makeNodeId() {
@@ -68,11 +69,12 @@ function App() {
   );
 
   const isValidConnection: IsValidConnection = useCallback((connection) => {
+    const { source, target } = connection;
     // Don't allow a node to be connected to itself.
-    if (connection.source === connection.target) {
+    if (source === target) {
       return false;
     }
-    return true;
+    return !doesCreateCycle(source, target, edges);
   }, []);
 
   const onAddNode = useCallback(() => {
