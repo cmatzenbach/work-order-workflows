@@ -5,6 +5,7 @@ import {
   useReactFlow,
   type Node,
   type NodeProps,
+  type Edge,
 } from "@xyflow/react";
 import clsx from "clsx";
 import { EditIcon } from "./icons/edit-icon";
@@ -14,6 +15,8 @@ export type WorkflowNode = Node<
   {
     label: string;
     isCompleted: boolean;
+    edges: Edge[];
+    nodes: WorkflowNode[];
   },
   "WorkflowNode"
 >;
@@ -21,11 +24,21 @@ export type WorkflowNode = Node<
 export const WorkflowNode = memo(
   ({ id, data, selected }: NodeProps<WorkflowNode>) => {
     const { updateNodeData } = useReactFlow<WorkflowNode>();
-    const { isCompleted } = data;
-    const isAvailable = true as boolean;
+    const { isCompleted, edges, nodes } = data;
 
-    const [label, setLabel] = useState(data.label);
-    const [editing, setEditing] = useState(false);
+    // get all source nodes
+    const sourceNodeIds = edges
+      .filter((edge) => edge.target === id)
+      .map((edge) => edge.source);
+    // ensure all source nodes were completed
+    const isAvailable = sourceNodeIds.every((sourceId) => {
+      const sourceNode = nodes.find((node) => node.id === sourceId);
+      return sourceNode?.data.isCompleted;
+    });
+
+    // label controls
+    const [label, setLabel] = useState<string>(data.label);
+    const [editing, setEditing] = useState<boolean>(false);
 
     const handleComplete = useCallback(() => {
       if (!isCompleted && isAvailable) {

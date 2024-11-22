@@ -96,7 +96,14 @@ function App() {
     <div className="w-screen h-screen">
       <ReactFlow
         nodeTypes={nodeTypes}
-        nodes={nodes}
+        nodes={nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            nodes,
+            edges,
+          },
+        }))}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
