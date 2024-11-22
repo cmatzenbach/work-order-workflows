@@ -27,11 +27,11 @@ export const WorkflowNode = memo(
     const { isCompleted, edges, nodes } = data;
 
     // get all source nodes
-    const sourceNodeIds = edges
+    const sourceIds = edges
       .filter((edge) => edge.target === id)
       .map((edge) => edge.source);
     // ensure all source nodes were completed
-    const isAvailable = sourceNodeIds.every((sourceId) => {
+    const isAvailable = sourceIds.every((sourceId) => {
       const sourceNode = nodes.find((node) => node.id === sourceId);
       return sourceNode?.data.isCompleted;
     });
