@@ -3,6 +3,8 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useReactFlow,
+  getOutgoers,
   type Edge,
   type OnConnect,
   type IsValidConnection,
@@ -60,6 +62,7 @@ const initialEdges: Edge[] = [
 function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { getNodes, getEdges } = useReactFlow();
 
   const onConnect: OnConnect = useCallback(
     (params) => {
@@ -68,14 +71,28 @@ function App() {
     [setEdges],
   );
 
-  const isValidConnection: IsValidConnection = useCallback((connection) => {
-    const { source, target } = connection;
-    // Don't allow a node to be connected to itself.
-    if (source === target) {
-      return false;
-    }
-    return !doesCreateCycle(source, target, edges);
-  }, []);
+  const isValidConnection = useCallback(
+    (connection) => {
+      // get current nodes and edges
+      const nodes = getNodes();
+      const edges = getEdges();
+      const target = nodes.find((node) => node.id === connection.target);
+
+      const hasCycle = (node, visited = new Set()) => {
+        if (visited.has(node.id)) return false;
+
+        visited.add(node.id);
+        for (const outgoer of getOutgoers(node, nodes, edges)) {
+          if (outgoer.id === connection.source) return true;
+          if (hasCycle(outgoer, visited)) return true;
+        }
+      };
+
+      if (target?.id === connection.source) return false;
+      return !hasCycle(target);
+    },
+    [getNodes, getEdges],
+  );
 
   const onAddNode = useCallback(() => {
     const id = makeNodeId();
