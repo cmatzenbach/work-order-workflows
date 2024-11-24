@@ -73,10 +73,11 @@ function App() {
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
+      // get current target
       const target = nodes.find((node) => node.id === connection.target);
 
-      const hasCycle = (node, visited = new Set()) => {
-        if (visited.has(node.id)) return false;
+      const hasCycle = (node: WorkflowNode, visited = new Set()) => {
+        if (visited.has(node?.id)) return false;
 
         visited.add(node.id);
         for (const outgoer of getOutgoers(node, nodes, edges)) {
