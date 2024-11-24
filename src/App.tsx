@@ -3,18 +3,19 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
-  useReactFlow,
   getOutgoers,
   type Edge,
   type OnConnect,
   type IsValidConnection,
+  type NodeChange,
   Background,
   Panel,
   MarkerType,
 } from "@xyflow/react";
 import { useCallback } from "react";
 import { WorkflowNode } from "./WorkflowNode";
-import { doesCreateCycle } from "./helpers/doesCreateCycle";
+
+type NodeChangeHandler = (changes: NodeChange<WorkflowNode>[]) => void;
 
 let nodeId = 1;
 function makeNodeId() {
@@ -62,7 +63,6 @@ const initialEdges: Edge[] = [
 function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const { getNodes, getEdges } = useReactFlow();
 
   const onConnect: OnConnect = useCallback(
     (params) => {
@@ -71,11 +71,8 @@ function App() {
     [setEdges],
   );
 
-  const isValidConnection = useCallback(
+  const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
-      // get current nodes and edges
-      const nodes = getNodes();
-      const edges = getEdges();
       const target = nodes.find((node) => node.id === connection.target);
 
       const hasCycle = (node, visited = new Set()) => {
@@ -91,7 +88,7 @@ function App() {
       if (target?.id === connection.source) return false;
       return !hasCycle(target);
     },
-    [getNodes, getEdges],
+    [nodes, edges],
   );
 
   const onAddNode = useCallback(() => {
@@ -111,6 +108,57 @@ function App() {
     setNodes((nodes) => [...nodes, newNode]);
   }, [nodes, setNodes]);
 
+  // create new function to handle delete action and connect deleted nodes
+  const onNodeDeletion = useCallback(
+    (changes: NodeChange<WorkflowNode>[]) => {
+      changes.forEach((change) => {
+        if (change.type === "remove") {
+          const deletedNodeId = change.id;
+
+          const priorNodes = edges
+            .filter((edge) => edge.target === deletedNodeId)
+            .map((edge) => edge.source);
+
+          const subsequentNodes = edges
+            .filter((edge) => edge.source === deletedNodeId)
+            .map((edge) => edge.target);
+
+          // Create new edges connecting the nodes
+          const newEdges: Edge[] = [];
+          for (const prior of priorNodes) {
+            for (const subsequent of subsequentNodes) {
+              newEdges.push({
+                id: `e${prior}-${subsequent}`,
+                source: prior,
+                target: subsequent,
+              });
+            }
+          }
+
+          // remove edges containing deleted node and append new edges
+          setEdges((edges) =>
+            edges
+              .filter(
+                (edge) =>
+                  edge.source !== deletedNodeId &&
+                  edge.target !== deletedNodeId,
+              )
+              .concat(newEdges),
+          );
+        }
+      });
+    },
+    [edges, setEdges],
+  );
+
+  const onNodesChangeHandler: NodeChangeHandler = useCallback(
+    (changes: NodeChange<WorkflowNode>[]) => {
+      onNodeDeletion(changes);
+      onNodesChange(changes);
+    },
+    [onNodeDeletion, onNodesChange],
+  );
+
   return (
     <div className="w-screen h-screen">
       <ReactFlow
@@ -124,7 +172,7 @@ function App() {
           },
         }))}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChangeHandler}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
